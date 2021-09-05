@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "messenger",
+    "slug": "messenger",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  },
+  "name": "messenger"
+}
