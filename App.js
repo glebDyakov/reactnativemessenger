@@ -136,15 +136,17 @@ function Search({ navigation, route }) {
         <View style={{ width: 150 }}>
           <TouchableOpacity onPress={() => {
             // setSearchContacts([])
-            setSearchContacts(
-              allContacts.filter(contact => {
-                console.log(`contact.name: ${contact.name}, contact._id: ${contact._id}`)
-                if(contact.name.toLowerCase().includes(keywords.toLowerCase()) && !(contact._id.includes(myId))){
-                  return true
-                }
-                return false
-              })
-            )
+            if(keywords.length >= 1){
+              setSearchContacts(
+                allContacts.filter(contact => {
+                  console.log(`contact.name: ${contact.name}, contact._id: ${contact._id}`)
+                  if(contact.name.toLowerCase().includes(keywords.toLowerCase()) && !(contact._id.includes(myId))){
+                    return true
+                  }
+                  return false
+                })
+              )
+            }
             // console.log(`searchContacts: ${searchContacts}`)
           }}>
             <Image style={{ width: 45, height: 45 }} source={ searchImg } />
@@ -155,32 +157,23 @@ function Search({ navigation, route }) {
 
       <ScrollView>
         {
-          searchContacts.map(searchContact => {
-            return (
-              <View key={ searchContact._id }>
-                <View style={styles.container}>
-                  <View style={{ flexDirection: 'column' }}>
-                    <TouchableOpacity style={{ borderRadius: 150 }} onPress={() => {
-                      navigation.navigate("ContactInfo", {
-                        avatar: searchContact.avatar,
-                        name: searchContact.name
-                      })
-                    }}>
-                      <Image style={{ width: 50, height: 50 }} source={ searchContact.avatar } />
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity onPress={() => {
-                    console.log(`searchContact._id: ${searchContact._id}, myId: ${myId}`)
-                    navigation.navigate("Chat", {
-                      avatar: searchContact.avatar,
-                      name: searchContact.name,
-                      id: searchContact.id,
-                      phone: searchContact.phone,
-                      contactId: myId,
-                      otherContactId: searchContact._id
-                    })
-                  }}>
-                    <View style={{ flexDirection: 'column' }} onPress={() => {
+          
+          searchContacts.length >= 1 ?
+            searchContacts.map(searchContact => {
+              return (
+                <View key={ searchContact._id }>
+                  <View style={styles.container}>
+                    <View style={{ flexDirection: 'column' }}>
+                      <TouchableOpacity style={{ borderRadius: 150 }} onPress={() => {
+                        navigation.navigate("ContactInfo", {
+                          avatar: searchContact.avatar,
+                          name: searchContact.name
+                        })
+                      }}>
+                        <Image style={{ width: 50, height: 50 }} source={ searchContact.avatar } />
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity onPress={() => {
                       console.log(`searchContact._id: ${searchContact._id}, myId: ${myId}`)
                       navigation.navigate("Chat", {
                         avatar: searchContact.avatar,
@@ -191,14 +184,29 @@ function Search({ navigation, route }) {
                         otherContactId: searchContact._id
                       })
                     }}>
-                      <Text>{ searchContact.name }</Text>
-                    </View>
-                  </TouchableOpacity>
+                      <View style={{ flexDirection: 'column' }} onPress={() => {
+                        console.log(`searchContact._id: ${searchContact._id}, myId: ${myId}`)
+                        navigation.navigate("Chat", {
+                          avatar: searchContact.avatar,
+                          name: searchContact.name,
+                          id: searchContact.id,
+                          phone: searchContact.phone,
+                          contactId: myId,
+                          otherContactId: searchContact._id
+                        })
+                      }}>
+                        <Text>{ searchContact.name }</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ padding: 4, borderBottomColor: "rgb(200, 200, 200)", borderBottomWidth: StyleSheet.hairlineWidth }}></Text>
                 </View>
-                <Text style={{ padding: 4, borderBottomColor: "rgb(200, 200, 200)", borderBottomWidth: StyleSheet.hairlineWidth }}></Text>
-              </View>
-            )
-          })
+              )
+            })
+          :
+            <View style={{ flexDirection: 'column', alignItems: 'center' }}>
+              <Text>Контактов с таким именем нет</Text>
+            </View>
         }
       
       </ScrollView>
@@ -454,10 +462,6 @@ function Chat({ navigation, route }) {
       console.log("Прикрепить новый контакт к этому пользователю")
       let sqlStatement = "CREATE TABLE IF NOT EXISTS otherscontacts (_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, phone TEXT, avatar TEXT);"
       transaction.executeSql(sqlStatement, [], (tx, receivedTable) => {
-        sqlStatement = `INSERT INTO \"otherscontacts\"(name, phone, avatar) VALUES (\"${name}\",\"${phone}\",\"empty\");`
-        transaction.executeSql(sqlStatement, [], (tx, receivedContact) => {
-          console.log("успешно добавлено")
-        
           console.log(`contactId: ${contactId}, otherContactId: ${otherContactId}`)
           fetch(`https://messengerserv.herokuapp.com/contacts/add/?contactid=${contactId}&othercontactid=${otherContactId}`, {
             mode: 'cors',
@@ -486,6 +490,18 @@ function Chat({ navigation, route }) {
           })
           .then(async result => {
             
+            if(JSON.parse(result).status !== undefined){
+              db.transaction(transaction => {
+                sqlStatement = `INSERT INTO \"otherscontacts\"(name, phone, avatar) VALUES (\"${name}\",\"${phone}\",\"empty\");`
+                transaction.executeSql(sqlStatement, [], (tx, receivedContact) => {
+                  console.log("успешно добавлено")
+                
+                }, (tx) => {
+                  console.log("ошибка добавления")    
+                })
+              })
+
+            }
           })
           
           fetch(`https://messengerserv.herokuapp.com/contacts/get/?id=${contactId}`, {
@@ -517,9 +533,6 @@ function Chat({ navigation, route }) {
               setMessages(JSON.parse(result).contact.messages)
             })
 
-        }, (tx) => {
-          console.log("ошибка добавления")    
-        })
       }, (tx) => {
             
       })
